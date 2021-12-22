@@ -20,9 +20,17 @@ public class UserAccessSystemArgon2 {
      */
     public boolean register(String email, String password) {
         if (!email.equals("") && !password.equals("")) {
-            User user = findUserByEmail(email);
-            if (user == null) {
-                String passwordHash = getHash(password);
+            User storedUser = null;
+
+            for (User user : users) {
+                if (user.getEmail().equals(email)) {
+                    storedUser = user;
+                }
+            }
+
+            if (storedUser == null) {
+                char[] characters = password.toCharArray();
+                String passwordHash = argon2.hash(20, 65536, 1, characters);
                 users.add(new User(email, passwordHash));
                 return true;
             }
@@ -37,53 +45,22 @@ public class UserAccessSystemArgon2 {
      * @return int -1 si el e-mail no existe, -2 si la contraseña es incorrecta y 1 si ambos son correctos.
      */
     public int login(String email, String password) {
-        User user = findUserByEmail(email);
-        if (user == null) {
+        User storedUser = null;
+
+        for (User user : users) {
+            if (user.getEmail().equals(email)) {
+                storedUser = user;
+            }
+        }
+        if (storedUser == null) {
             return -1;
         }
 
-        String hash = getHash(password);
-        if (!verifyPassword(password,user.getPasswordHash())) {
+        char[] characters = password.toCharArray();
+        String passwordHash = argon2.hash(40, 65536, 1, characters);
+        if (!argon2.verify(storedUser.getPasswordHash(), characters)) {
             return -2;
         }
         return 1;
-    }
-    /**
-     * Método que devuelve un usuario almacenado en el ArrayList de usuarios.
-     * Lo busca por su e-mail.
-     *
-     * @param email E-mail del usuario a buscar.
-     * @return En caso afirmativo, el usuario. En caso negativo devuelve null.
-     */
-    public User findUserByEmail(String email) {
-        for (User user : users) {
-            if (user.getEmail().equals(email)) {
-                return user;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Método que genera un código hash a partir de la contraseña aportada como String.
-     *
-     * @param password String contraseña del usuario.
-     * @return String código hash.
-     */
-    private String getHash(String password) {
-        char[] characters = password.toCharArray();
-        return argon2.hash(20, 65536, 1, characters);
-    }
-
-    /**
-     * Método que compara la contraseña aportada con el código hash almacenado del usuario.
-     *
-     * @param password String contraseña aportada al intentar iniciar sesión.
-     * @param hash código hash almacenado en el usuario.
-     * @return boolean true si coinciden, false si no coinciden.
-     */
-    private boolean verifyPassword(String password, String hash) {
-        char[] characters = password.toCharArray();
-        return argon2.verify(hash, characters);
     }
 }
